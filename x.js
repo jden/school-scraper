@@ -1,7 +1,26 @@
 var wd = require('selenium-webdriver')
 var db = require('./db')
+var charybdis = require('charybdis')
 
-db.get('schools!005').then(function (school) {
+// db.get('schools!005').then(scrape)
+// .catch(function (e) {
+//   console.error('error:', e)
+// })
+
+db.createValueStream({start:'schools!000', end: 'schools!ZZZ'})
+  .pipe(charybdis(function (school) {
+    return scrape(school)
+      .then(function (data) {
+        console.log('scraped', data.id, data.name)
+        return db.put(data.id, data)
+      })
+  }))
+  .then(function () {
+    console.log('done')
+  })
+  .catch(console.error)
+
+function scrape(school) {
 
   var driver = new wd.Builder()
     .withCapabilities(wd.Capabilities.chrome())
@@ -29,19 +48,10 @@ db.get('schools!005').then(function (school) {
 
   return tick().then(function () {
     driver.quit()
-
-    return db.put(school.id, schoolData)
-      .then(function () {
-        console.log(schoolData)
-        console.log('done')
-        process.exit()
-      })
+    return schoolData
   })
 
-})
-.catch(function (e) {
-  console.error('error:', e)
-})
+}
 
 
 
